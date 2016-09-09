@@ -18,10 +18,10 @@ if RUBY_VERSION.to_f > 1.9
 end
 
 # search folder strings may start with ~ for home folder; final slash is optional
-search_folders = [
+search_folders = ["/Users/dennis/Dropbox (Personal)/SyncArea/NotationalVelocity"
 ]
-search_current_folder = true
-recursive = true                                # also search subfolders?
+search_current_folder = false
+recursive = false                                # also search subfolders?
 extensions = 'md,ft,txt,png,jpg,jpeg,pdf'       # comma-separated list
 ft_extensions = 'md,ft,txt'                     # set this to filetypes registered
                                                 # to open with FoldingText
@@ -29,13 +29,13 @@ filter_delim = '#'
 applescript_path = File.join(File.dirname(__FILE__), 'Open document with filter.scpt')
 
 def openFile( file, filter_path, applescript_path, ft_extensions, filter_delim )
-  
+
   target_file = file.gsub(/"/){ %q[\"] }
-  
+
   ft_extensions = ft_extensions.dup.gsub(',', '|')
-  
+
   if target_file.match(Regexp.new(%[\.(#{ft_extensions})$]))
-    
+
     if filter_path.nil?
       filter_path = ""
     else
@@ -44,17 +44,17 @@ def openFile( file, filter_path, applescript_path, ft_extensions, filter_delim )
       end
       filter_path.gsub!(/[^\-\w]/, ' ')   # except \w or dash, replace with space
       filter_path.gsub!(/\s+/, ' and ')
-      
+
       filter_path = "//#{filter_path} and @type=heading///*/ancestor-or-self::*"
     end
-    
-    filter_path.gsub!(/"/){ %q[\"]} 
+
+    filter_path.gsub!(/"/){ %q[\"]}
     %x[osascript "#{applescript_path}" "#{target_file}" "#{filter_path}"]
   else
     # open the file in the default app for its type
     %x[open "#{target_file}"]
   end
-  
+
   # this next version will always open in FoldingText, but it sometimes fails due
   # to permissions. May be a sandboxing issue
   # %x[osascript -e 'tell application "FoldingText" to open "#{target_file}"']
@@ -82,8 +82,20 @@ if not search_term[filter_delim].nil?
 end
 
 # prepare file glob
-file_glob = search_term.gsub(/[^\w\-]+/, '*') + "*.{#{extensions}}"
-file_glob = '*' + file_glob            # allow search to start in middle of filename
+
+# DB: I'm deviating from the original approach to translate the
+# search_term to a file_glob in a stricter fashion. Instead of
+# searching for "*search_term*.extension" my version omits the trailing and
+# ending '*'. This seems better for my purpose as the original approach matches
+# sometimes not the intended file but also other files with the similar filenames.
+# Original version was:
+#   file_glob = search_term.gsub(/[^\w\-]+/, '*') + "*.{#{extensions}}"
+#   file_glob = '*' + file_glob            # allow search to start in middle of filename
+
+file_glob = search_term + ".{#{extensions}}"
+file_glob.gsub!(/[äöüÄÖÜß]/,'*') # for some strange reason umlauts that get matched when invoking the ruby script direclty
+                                 # don't get matched correctly when launched via FoldingText. replacing umlauts with '*' seems to work
+
 file_glob.gsub!(/\*+/, '*')            # clean up successive *'s
 if recursive
   file_glob = '**/' + file_glob
@@ -108,10 +120,14 @@ search_folders.each do |folder|
   folder.strip!
   folder.gsub!(/^~/, Dir.home)
   folder << '/' if not folder[-1] == '/'
-  
+
   files = Dir.glob(folder + file_glob, File::FNM_CASEFOLD)
-  
+
   if files.length > 0
+    puts "found #{files.length} matches, opening first one. matches: #{files}"
+
+    # For debugging purposes, write to a log file in the home directory
+    File.open("/Users/dennis/ftdebug.txt", 'w') { |file| file.write("\nfound #{files.length} matches, opening first one. matches: #{files}\nfile_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\nsearch_term: #{search_term}\n") }
     target_file = files[0]
     break
   end
@@ -121,6 +137,8 @@ end
 if not target_file.nil?
   openFile( target_file, filter_path, applescript_path, ft_extensions, filter_delim )
 else
-  # if file was not found, search for it in Notational Velocity (or nvALT)
-  openInNV( search_term_uri )
+  # Try to write to a log file in the home directory then open it in editor
+  File.open("/Users/dennis/ftdebug.txt", 'w') { |file| file.write("# Error matching wiki link\n\nno match found: '#{search_term}'.\n file_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\n") }
+  openFile("/Users/dennis/ftdebug.txt", filter_path, applescript_path, ft_extensions, filter_delim )
+
 end
