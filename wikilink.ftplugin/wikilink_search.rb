@@ -18,7 +18,7 @@ if RUBY_VERSION.to_f > 1.9
 end
 
 # search folder strings may start with ~ for home folder; final slash is optional
-search_folders = ["/Users/dennis/Dropbox (Personal)/SyncArea/NotationalVelocity"
+search_folders = [
 ]
 search_current_folder = false
 recursive = false                                # also search subfolders?
@@ -127,7 +127,7 @@ search_folders.each do |folder|
     puts "found #{files.length} matches, opening first one. matches: #{files}"
 
     # For debugging purposes, write to a log file in the home directory
-    File.open("/Users/dennis/ftdebug.txt", 'w') { |file| file.write("\nfound #{files.length} matches, opening first one. matches: #{files}\nfile_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\nsearch_term: #{search_term}\n") }
+    File.open("#{Dir.home}/ftdebug.txt", 'w+') { |file| file.write("\nfound #{files.length} matches, opening first one. matches: #{files}\nfile_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\nsearch_term: #{search_term}\n") }
     target_file = files[0]
     break
   end
@@ -138,7 +138,7 @@ if not target_file.nil?
   openFile( target_file, filter_path, applescript_path, ft_extensions, filter_delim )
 else
   # Try to write to a log file in the home directory then open it in editor
-  File.open("/Users/dennis/ftdebug.txt", 'w') { |file| file.write("# Error matching wiki link\n\nno match found: '#{search_term}'.\n file_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\n") }
-  openFile("/Users/dennis/ftdebug.txt", filter_path, applescript_path, ft_extensions, filter_delim )
+  File.open("#{Dir.home}/ftdebug.txt", 'w+') { |file| file.write("# Error matching wiki link\n\nno match found: '#{search_term}'.\n file_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\n") }
+  openFile("#{Dir.home}/ftdebug.txt", filter_path, applescript_path, ft_extensions, filter_delim )
 
 end
