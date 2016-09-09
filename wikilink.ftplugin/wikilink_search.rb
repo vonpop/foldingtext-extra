@@ -20,7 +20,7 @@ end
 # search folder strings may start with ~ for home folder; final slash is optional
 search_folders = [
 ]
-search_current_folder = false
+search_current_folder = true
 recursive = false                                # also search subfolders?
 extensions = 'md,ft,txt,png,jpg,jpeg,pdf'       # comma-separated list
 ft_extensions = 'md,ft,txt'                     # set this to filetypes registered
@@ -58,6 +58,12 @@ def openFile( file, filter_path, applescript_path, ft_extensions, filter_delim )
   # this next version will always open in FoldingText, but it sometimes fails due
   # to permissions. May be a sandboxing issue
   # %x[osascript -e 'tell application "FoldingText" to open "#{target_file}"']
+end
+
+# For debugging purposes, write to a log file in the home directory
+def writeDebugFile message, debug_info
+    File.open("#{Dir.home}/ftdebug.txt", 'w+') { |file|
+        file.write("#{message}\n#{debug_info}") }
 end
 
 def openInNV search_term
@@ -124,10 +130,7 @@ search_folders.each do |folder|
   files = Dir.glob(folder + file_glob, File::FNM_CASEFOLD)
 
   if files.length > 0
-    puts "found #{files.length} matches, opening first one. matches: #{files}"
-
-    # For debugging purposes, write to a log file in the home directory
-    File.open("#{Dir.home}/ftdebug.txt", 'w+') { |file| file.write("\nfound #{files.length} matches, opening first one. matches: #{files}\nfile_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\nsearch_term: #{search_term}\n") }
+    writeDebugFile("found #{files.length} matches , opening first one of #{files}", [search_term, file_glob])
     target_file = files[0]
     break
   end
@@ -138,7 +141,7 @@ if not target_file.nil?
   openFile( target_file, filter_path, applescript_path, ft_extensions, filter_delim )
 else
   # Try to write to a log file in the home directory then open it in editor
-  File.open("#{Dir.home}/ftdebug.txt", 'w+') { |file| file.write("# Error matching wiki link\n\nno match found: '#{search_term}'.\n file_glob: #{file_glob}\nsearch_term_uri: #{search_term_uri}\n") }
+  writeDebugFile("# Error matching wiki link\n\nno match found",[search_term, file_glob])
   openFile("#{Dir.home}/ftdebug.txt", filter_path, applescript_path, ft_extensions, filter_delim )
 
 end
